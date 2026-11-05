@@ -5,9 +5,13 @@ x-app-environment: &app-environment
   DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
   REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
   AUTH_SECRET: ${AUTH_SECRET}
-  VIDEO_PROVIDER: ${VIDEO_PROVIDER:-mock}
+  ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+  VIDEO_PROVIDER: ${VIDEO_PROVIDER:-fal}
   RUNWAY_API_KEY: ${RUNWAY_API_KEY:-}
-  MOCK_VIDEO_URL: ${MOCK_VIDEO_URL:-https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4}
+  REPLICATE_API_TOKEN: ${REPLICATE_API_TOKEN:-}
+  REPLICATE_MODEL: ${REPLICATE_MODEL:-alibaba/wan-3}
+  FAL_KEY: ${FAL_KEY:-}
+  FAL_VIDEO_ENDPOINT: ${FAL_VIDEO_ENDPOINT:-alibaba/wan-3.0/text-to-video}
   STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
   VIDEO_STORAGE_DIR: /app/data/videos
   AWS_REGION: ${AWS_REGION:-us-east-1}

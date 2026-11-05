@@ -8,10 +8,7 @@ export async function processGeneration(generationId: string) {
   if (!generation || generation.status === GenerationStatus.COMPLETED) return;
 
   await prisma.generation.update({ where: { id: generationId }, data: { status: GenerationStatus.PROCESSING, errorMessage: null } });
-  const provider = getVideoProvider();
-  if (generation.provider !== provider.capabilities.name) {
-    throw new Error(`This job was created with ${generation.provider}, but VIDEO_PROVIDER is now ${provider.capabilities.name}. Restore the previous provider or submit a new job.`);
-  }
+  const provider = getVideoProvider(generation.provider);
   const result = await provider.generate(
     {
       prompt: generation.prompt,

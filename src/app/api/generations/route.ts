@@ -4,7 +4,7 @@ import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { getGenerationQueue } from "@/lib/queue/generation-queue";
 import { generationRequestSchema } from "@/lib/validation/generation";
-import { getVideoProvider } from "@/server/providers";
+import { getActiveVideoProviderName, getVideoProvider, isVideoProviderConfigured } from "@/server/providers";
 
 export const runtime = "nodejs";
 
@@ -43,12 +43,12 @@ export async function POST(request: Request) {
 
   let provider;
   try {
-    provider = getVideoProvider();
+    provider = getVideoProvider(await getActiveVideoProviderName());
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "The video provider is not configured." }, { status: 503 });
   }
-  if (provider.capabilities.name === "runway" && !process.env.RUNWAY_API_KEY) {
-    return NextResponse.json({ error: "Runway is selected, but RUNWAY_API_KEY is missing from .env." }, { status: 503 });
+  if (!isVideoProviderConfigured(provider.capabilities.name as "runway" | "replicate" | "fal")) {
+    return NextResponse.json({ error: `${provider.capabilities.label} is selected, but its server API key is missing. Add the key to the server environment and restart the app and worker.` }, { status: 503 });
   }
 
   const requestData = parsed.data;

@@ -86,8 +86,11 @@ Then replace these values in `.env.production`:
 - `AUTH_SECRET` with the first generated value.
 - `POSTGRES_PASSWORD` with the second generated value.
 - `REDIS_PASSWORD` with the third generated value.
+- `ADMIN_EMAIL` with the email address you use to sign in to Frameforge.
 
-Keep `VIDEO_PROVIDER=mock` for the first deployment. The mock needs no paid key, but it downloads the public sample video. To use Runway later, set `VIDEO_PROVIDER=runway` and add your server-side `RUNWAY_API_KEY`. Never put that key in frontend code.
+This deployment uses real video providers only. Set `VIDEO_PROVIDER=fal` and add your `FAL_KEY` before generating. You can use `RUNWAY_API_KEY` or `REPLICATE_API_TOKEN` instead and select that provider in the studio's **Providers** page. Provider APIs charge for successful generations; trial credits vary by account and are not guaranteed. Never put keys in frontend code or Git.
+
+The provider settings page is available to the account whose sign-in email matches `ADMIN_EMAIL`. Its selection is stored in PostgreSQL and applies to new generations. Runway Gen-4.5 outputs up to 10 seconds; Replicate Wan 3 and fal.ai Wan 3 support up to 30 seconds. A 35–45 second video still needs multiple clips and editing. fal.ai Wan 3 generates audio; the other adapters do not request audio.
 
 Restrict the file to your account:
 

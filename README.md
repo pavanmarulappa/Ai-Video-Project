@@ -7,10 +7,10 @@ Frameforge is a local-first MVP for creating and managing AI video generations. 
 1. **Web app:** Next.js App Router, React, TypeScript, and Tailwind CSS render the marketing site and signed-in studio.
 2. **Accounts and jobs:** Prisma stores users and generation metadata in PostgreSQL. Passwords are hashed; a signed, HTTP-only cookie protects the studio and API routes.
 3. **Background generation:** The web app validates and saves a job, then sends its ID to BullMQ. A separate worker updates its status and calls the configured provider.
-4. **Provider boundary:** The mock and Runway adapters implement the same interface and advertise their own supported ratios, durations, and resolutions. The server rejects unsupported settings.
+4. **Provider boundary:** Runway, Replicate, and fal.ai adapters implement the same interface and advertise their own supported ratios, durations, and resolutions. An admin can change the active provider in the studio; each generation keeps the provider it was submitted to.
 5. **Video storage:** The worker copies completed output into local disk storage by default, or an S3-compatible bucket when configured. Videos stay out of the database and are streamed only through an authenticated, owner-checked route.
 
-The default mock provider needs no paid AI credentials. It returns the same public CC0 flower sample for every prompt, so the MVP can exercise the complete queue, storage, preview, and download flow. The first run needs internet access to fetch that sample.
+Frameforge now uses real video providers only. Add an API key for the selected provider before generating. API usage may incur charges.
 
 ## Requirements
 
@@ -41,7 +41,9 @@ In the second one, start the background worker:
 npm run worker
 ```
 
-Visit [http://localhost:3000](http://localhost:3000), create an account, and submit a video prompt. The video should move from **In queue** to **Creating** and then **Complete**. The mock result is the same sample video each time; its prompt and requested settings are still saved in your history.
+Set `FAL_KEY` in `.env`, then visit [http://localhost:3000](http://localhost:3000), create an account, and submit a video prompt. The video should move from **In queue** to **Creating** and then **Complete**. The `FAL_KEY` stays on the server and is never sent to the browser.
+
+To access provider settings locally, set `ADMIN_EMAIL` in `.env` to the email address you use to register or sign in. After signing in, open **Providers** in the left navigation. Add provider API keys to the server environment before selecting those providers.
 
 The `.env.example` secret is suitable only for local development. Before sharing a running app, replace `AUTH_SECRET` in `.env` with a random value. You can generate one with:
 
@@ -51,7 +53,19 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
 
 To stop PostgreSQL and Redis, run `docker compose down`. Their local data stays in Docker volumes.
 
-## Connecting Runway
+## Video providers
+
+The studio includes three provider options:
+
+- **Runway Gen-4.5:** 720p text-to-video, 2–10 seconds in this adapter. Set `RUNWAY_API_KEY`.
+- **Replicate Wan 3:** 720p or 1080p, portrait supported, up to 30 seconds. Set `REPLICATE_API_TOKEN`.
+- **fal.ai Wan 3:** 720p or 1080p, portrait supported, up to 30 seconds, with generated audio enabled. Set `FAL_KEY`.
+
+Provider API usage may be billed per successful generation; free trial credits or promotional access are account-specific and not guaranteed. Check live pricing and account credit terms before generating. Wan 3 supports up to 30 seconds in one request, so 35–45 second videos still need more than one clip and editing.
+
+The active provider is selected in **Providers** in the signed-in studio. Its choice is stored in PostgreSQL and applies to new generations; existing queued jobs retain their original provider. `VIDEO_PROVIDER` is only the initial default before an admin makes a selection. The admin account is the signed-in email that matches `ADMIN_EMAIL`.
+
+### Connecting Runway
 
 The Runway adapter uses the official text-to-video task endpoint from the Node server and worker. It sends the API key in a server-side `Authorization: Bearer` header and the required `X-Runway-Version: 2024-11-06` header. The adapter creates a task, saves its task ID, polls for completion, and downloads the returned output into your configured storage. This matters because Runway output URLs are temporary.
 
@@ -59,13 +73,13 @@ Current adapter settings are intentionally limited to the options documented for
 
 - Model: `gen4.5` (fixed in this adapter).
 - Aspect ratio: landscape 16:9 or portrait 9:16. Square is not offered by this adapter.
-- Duration choices shown in the form: 5, 8, or 10 seconds (within Gen-4.5's documented 2–10 second range).
+- Duration choices shown in the form: every integer from 2 through 10 seconds.
 - Resolution: 720p. The form hides higher resolutions that this adapter does not advertise.
 - Billing and availability depend on your Runway developer account, credits, and model access. Check the live pricing and model pages before using paid generation.
 
 1. Create an API key in your Runway developer account.
-2. In `.env`, set `VIDEO_PROVIDER="runway"` and `RUNWAY_API_KEY="your-key"`.
-3. Restart both `npm run dev` and `npm run worker`.
+2. In `.env`, set `RUNWAY_API_KEY="your-key"`.
+3. Restart both `npm run dev` and `npm run worker`, then select Runway in **Providers**.
 
 Official references (review them for changes before upgrading the adapter):
 
@@ -75,6 +89,21 @@ Official references (review them for changes before upgrading the adapter):
 - [Runway output docs: task output and temporary URLs](https://docs.dev.runwayml.com/assets/outputs/)
 - [Runway model guide](https://docs.dev.runwayml.com/guides/models/) and [pricing](https://docs.dev.runwayml.com/guides/pricing/)
 
+### Connecting Replicate and fal.ai
+
+Add the chosen service's server key to `.env`, then restart the app and worker. Select that provider in the **Providers** page.
+
+```env
+REPLICATE_API_TOKEN="your-replicate-token"
+FAL_KEY="your-fal-api-key"
+```
+
+The default endpoints are Alibaba Wan 3 (`alibaba/wan-3` on Replicate and `alibaba/wan-3.0/text-to-video` on fal.ai). Optional environment variables let you change them: `REPLICATE_MODEL` and `FAL_VIDEO_ENDPOINT`. Do not expose any provider key to browser code or commit it to Git.
+
+- [Replicate Wan 3 model/API and current pricing](https://replicate.com/alibaba/wan-3)
+- [fal.ai Wan 3 text-to-video API schema](https://fal.ai/models/alibaba/wan-3.0/text-to-video/api)
+- [fal.ai model API billing](https://fal.ai/docs/documentation/model-apis/pricing)
+
 ## Environment variables
 
 | Variable | Default | Purpose |
@@ -82,9 +111,13 @@ Official references (review them for changes before upgrading the adapter):
 | `DATABASE_URL` | Local PostgreSQL in `.env.example` | Prisma connection string |
 | `REDIS_URL` | `redis://localhost:6379` | BullMQ connection |
 | `AUTH_SECRET` | Local development placeholder | Signs the seven-day HTTP-only session cookie; use a random secret outside local development |
-| `VIDEO_PROVIDER` | `mock` | `mock` or `runway` |
+| `ADMIN_EMAIL` | Empty | Email that receives the provider-settings admin control |
+| `VIDEO_PROVIDER` | `fal` | Initial provider before an admin saves a selection: `runway`, `replicate`, or `fal` |
 | `RUNWAY_API_KEY` | Empty | Server-only Runway credential when using the Runway adapter |
-| `MOCK_VIDEO_URL` | Public sample MP4 | Optional HTTPS source for mock output |
+| `REPLICATE_API_TOKEN` | Empty | Server-only Replicate credential |
+| `REPLICATE_MODEL` | `alibaba/wan-3` | Replicate model in `owner/model` format |
+| `FAL_KEY` | Empty | Server-only fal.ai credential |
+| `FAL_VIDEO_ENDPOINT` | `alibaba/wan-3.0/text-to-video` | fal.ai model endpoint |
 | `STORAGE_DRIVER` | `local` | `local` or `s3` |
 | `VIDEO_STORAGE_DIR` | `data/videos` | Folder for local generated videos; ignored by Git |
 | `AWS_REGION` | `us-east-1` | S3 bucket region |
@@ -109,7 +142,6 @@ npm run start        # Serve a production build
 
 ## Limitations
 
-- Mock mode is a workflow demo and does not synthesize a new video from the prompt. Its public sample source must be reachable from the worker.
 - This MVP implements local and S3-compatible object storage, but leaves MinIO setup to the developer.
 - Email verification, password reset, rate limiting, billing, and high availability are outside this MVP. The single-server [Ubuntu deployment guide](DEPLOY-UBUNTU.md) supports private SSH-tunnel access without a domain and public HTTPS when you add one.
 - Runway's model list, limits, API headers, output retention, and prices can change. The adapter is intentionally narrow; use the linked official docs when updating it.

@@ -62,7 +62,7 @@ export function GenerationList({ generations, compact = false }: { generations: 
             <div className="generation-content">
               <div className="generation-heading"><Status status={generation.status} /><span className="generation-date">{formatDate(generation.createdAt)}</span></div>
               <p className="generation-prompt">{generation.prompt}</p>
-              <div className="generation-meta"><span>{generation.duration}s</span><span className="meta-separator">·</span><span>{generation.resolution}</span><span className="meta-separator">·</span><span>{generation.provider === "mock" ? "Mock sample" : "Runway"}</span></div>
+              <div className="generation-meta"><span>{generation.duration}s</span><span className="meta-separator">·</span><span>{generation.resolution}</span><span className="meta-separator">·</span><span>{({ runway: "Runway", replicate: "Replicate", fal: "fal.ai" } as Record<string, string>)[generation.provider] || generation.provider}</span></div>
               {generation.status === "FAILED" && <p className="generation-error">{generation.errorMessage || "The provider could not complete this video. You can try again."}</p>}
               {generation.status === "COMPLETED" && (
                 <a className="download-link" href={`/api/generations/${generation.id}/video?download=1`}><ArrowDownToLine size={15} /> Download video</a>

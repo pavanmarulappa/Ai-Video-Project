@@ -42,3 +42,9 @@ model Generation {
   @@index([userId, createdAt(sort: Desc)])
   @@index([status, createdAt])
 }
+
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}

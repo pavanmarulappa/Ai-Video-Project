@@ -4,6 +4,7 @@ import { ArrowUpRight, Check, Clapperboard, Film, MonitorPlay, Smartphone } from
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ProviderCapabilities } from "@/server/providers/provider";
+import { MAX_PROMPT_LENGTH } from "@/lib/validation/generation";
 
 const ratios = [
   { value: "16:9", label: "Landscape", size: "16:9", icon: MonitorPlay, detail: "YouTube · presentations" },
@@ -62,14 +63,14 @@ export function CreateVideoForm({ capabilities }: { capabilities: ProviderCapabi
           id="prompt"
           name="prompt"
           value={prompt}
-          onChange={(event) => setPrompt(event.target.value.slice(0, 1000))}
+          onChange={(event) => setPrompt(event.target.value.slice(0, MAX_PROMPT_LENGTH))}
           minLength={8}
-          maxLength={1000}
+          maxLength={MAX_PROMPT_LENGTH}
           placeholder="A quiet coastal town at sunrise, waves washing over dark stones…"
           required
           rows={8}
         />
-        <div className="prompt-footer"><span>Be specific about motion, lighting, and mood.</span><span>{prompt.length} / 1,000</span></div>
+        <div className="prompt-footer"><span>Be specific about motion, lighting, and mood.</span><span>{prompt.length.toLocaleString()} / {MAX_PROMPT_LENGTH.toLocaleString()}</span></div>
 
         <div className="form-divider" />
         <div className="field-label">Aspect ratio</div>
@@ -94,7 +95,7 @@ export function CreateVideoForm({ capabilities }: { capabilities: ProviderCapabi
 
         <div className="settings-row">
           <label className="field-label" htmlFor="duration">Duration
-            <select className="select-input" id="duration" name="duration" defaultValue={capabilities.durations[0]}>
+            <select className="select-input" id="duration" name="duration" defaultValue={capabilities.durations.includes(10) ? 10 : capabilities.durations[0]}>
               {capabilities.durations.map((duration) => <option key={duration} value={duration}>{duration} seconds</option>)}
             </select>
           </label>

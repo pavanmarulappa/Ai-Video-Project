@@ -16,7 +16,7 @@ export class RunwayProvider implements VideoProvider {
     name: "runway",
     label: "Runway Gen-4.5",
     aspectRatios: ["16:9", "9:16"],
-    durations: [5, 8, 10],
+    durations: [2, 3, 4, 5, 6, 7, 8, 9, 10],
     resolutions: ["720p"],
     note: "Gen-4.5 text-to-video supports landscape or portrait at 720p. Square and higher resolutions are not available through this adapter.",
   };
